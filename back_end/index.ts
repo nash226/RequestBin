@@ -71,10 +71,10 @@ app.post("/api/web/:id", async (req, res) => {
 
   try {
     while (true) {
-      let res = await pool.query(
+      let result = await pool.query(
         `SELECT * FROM BASKETS WHERE endpoint = $1`, [newEndPoint]
       )
-      if (!res.rows.length) { break }
+      if (!result.rows.length) { break }
       newEndPoint = generateEndpoint();
     }
     await pool.query(
