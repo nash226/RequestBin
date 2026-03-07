@@ -6,7 +6,7 @@ import MyBaskets from './components/MyBaskets'
 function App() {
 
   const [userToken, setUserToken] = useState<string | null>(null)
-  const [baskets, setUserBaskets] = useState(null)
+  const [baskets, setUserBaskets] = useState([])
 
   useEffect(() => {
     let token = localStorage.getItem('userToken') || null
@@ -36,7 +36,7 @@ function App() {
           <NewBasket />
         </div>
         <div className="my-baskets-panel">
-          <MyBaskets />
+          <MyBaskets baskets={baskets}/>
         </div>
       </div>
     </div>
