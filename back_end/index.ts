@@ -25,7 +25,7 @@ app.use(express.text({ type: 'text/*' })); // Text bodies
 
 
 app.get('/api/web', (req, res) => {
-  res.status(200)
+  res.status(200).json({}) // need to chain otherwise request will hang
 })
 
 app.get('/api/web/baskets', async (req, res) => {
