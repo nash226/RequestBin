@@ -23,7 +23,7 @@ const statements = [
       id SERIAL PRIMARY KEY,
       endpoint CHAR(7) NOT NULL,
       config_response JSONB NOT NULL,
-      master_token UUID NOT NULL REFERENCES master_tokens(tokens) ON DELETE CASCADE,
+      master_token_id INTEGER NOT NULL REFERENCES master_tokens(id) ON DELETE CASCADE,
       CONSTRAINT endpoint_alphanumeric CHECK (endpoint ~ '^[A-Za-z0-9]{7}$')
   );`,
   `CREATE TABLE IF NOT EXISTS requests (
@@ -35,16 +35,7 @@ const statements = [
     request_time TIME NOT NULL,
     mondodb_id VARCHAR(255) UNIQUE NOT NULL
   );`
-]
-
-// create master tokens table 
-
-
-// baskets table
-
-
-// requests table
-
+];
 
 // Function to initialize tables
 export async function initializeSchema() {
