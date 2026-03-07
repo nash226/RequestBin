@@ -1,6 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
-import { pool, initializeSchema } from './db/schema.js'
+import { pool, initializeSchema } from './db/psql_schema.js'
 import mongoose from "mongoose";
 dotenv.config();
 

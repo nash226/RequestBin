@@ -28,7 +28,7 @@ const statements = [
   );`,
   `CREATE TABLE IF NOT EXISTS requests (
     id SERIAL PRIMARY KEY,
-    basket_id INT NOT NULL REFERENCES baskets(id) ON DELETE CASCADE,
+    basket_id INTEGER NOT NULL REFERENCES baskets(id) ON DELETE CASCADE,
     method VARCHAR(10) NOT NULL,
     headers JSONB NOT NULL,
     request_date DATE NOT NULL,
@@ -48,4 +48,22 @@ export async function initializeSchema() {
     }
   }
   console.log('Database schema initialized.');
+}
+
+interface master_token_object {
+  id: number;
+  master_token: string;
+}
+
+// To auto generate our master tokens
+export async function generateMasterToken(): Promise<master_token_object> {
+  const res = await pool.query<master_token_object>(
+    `INSERT INTO master_tokens DEFAULT VALUES RETURNING *;`
+  );
+
+  const row = res.rows[0];
+
+  if (!row) { throw new Error("generateMasterToken() failed; no row returned")}
+
+  return row;
 }
