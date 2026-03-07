@@ -13,7 +13,7 @@ const statements = [
   `CREATE EXTENSION IF NOT EXISTS pgcrypto;`,
   `CREATE TABLE IF NOT EXISTS master_tokens (
       id SERIAL PRIMARY KEY,
-      tokens UUID DEFAULT gen_random_uuid() UNIQUE NOT NULL
+      token UUID DEFAULT gen_random_uuid() UNIQUE NOT NULL
   );`,
   `CREATE TABLE IF NOT EXISTS baskets (
       id SERIAL PRIMARY KEY,
@@ -48,7 +48,7 @@ export async function initializeSchema() {
 
 interface master_token_object {
   id: number;
-  master_token: string;
+  token: string;
 }
 
 // To auto generate our master tokens
