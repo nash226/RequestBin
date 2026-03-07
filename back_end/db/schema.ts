@@ -1,5 +1,8 @@
-import pkg from 'pg';
-const { Pool } = pkg;
+// why did we do this?
+// import pkg from 'pg';
+// const { Pool } = pkg;
+// and now
+import { Pool } from 'pg';
 
 import dotenv from 'dotenv';
 dotenv.config();

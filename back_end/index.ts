@@ -1,12 +1,8 @@
 import express from "express";
 import dotenv from "dotenv";
 import { pool, initializeSchema } from './db/schema.js'
-import { Pool } from "pg";
 import mongoose from "mongoose";
 dotenv.config();
-
-
-
 
 const app = express();
 initializeSchema();

@@ -41,5 +41,8 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
+    // these settings would allow the import of .ts files (into index.ts, but the compiler will not run. Counterintuituve.)
+    // "allowImportingTsExtensions": true,
+    // "noEmit": true
   }
 }
