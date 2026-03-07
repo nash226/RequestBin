@@ -1,7 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import { pool, initializeSchema, generateMasterToken } from './db/psql_schema.js'
-import { mongoExecutor } from './db/mongo_schema.js';
+// import { mongoExecutor } from './db/mongo_schema.js';
 dotenv.config();
 
 const app = express();
@@ -52,8 +52,7 @@ app.post("/api/web/:id", async (req, res) => {
   let { masterToken } = req.body;
 
   if (!masterToken) {
-     generateMasterToken()
-    .then(newMasterTokenRow => masterToken = newMasterTokenRow.token)
+    await generateMasterToken().then(newMasterTokenRow => masterToken = newMasterTokenRow.token)
   }
 
   let masterTokenId;
@@ -64,7 +63,7 @@ app.post("/api/web/:id", async (req, res) => {
     )
     masterTokenId = result.rows[0].id;
   } catch (err) {
-    res.status(500).send(`Error retrieving master token ID`)
+    return res.status(500).send(`Error retrieving master token ID`)
   }
 
   let newEndPoint = generateEndpoint();
