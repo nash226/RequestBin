@@ -40,7 +40,7 @@ app.get('/api/web/baskets', async (req, res) => {
       FROM baskets b
       JOIN master_tokens mt
       ON b.master_token_id = mt.id
-      WHERE mt.token = $1 RETURNING *`,
+      WHERE mt.token = $1`,
       [masterToken]
     );
     res.status(200)
@@ -61,7 +61,7 @@ app.post("/api/web/:id", async (req, res) => {
 
   try {
     let res = await pool.query(
-      `SELECT id FROM master_tokens WHERE token = $1 RETURNING *`, [masterToken]
+      `SELECT id FROM master_tokens WHERE token = $1`, [masterToken]
     )
     masterTokenId = res.rows[0].id;
   } catch (err) {
@@ -73,7 +73,7 @@ app.post("/api/web/:id", async (req, res) => {
   try {
     while (true) {
       let res = await pool.query(
-        `SELECT * FROM BASKETS WHERE endpoint = $1 RETURNING *`, [newEndPoint]
+        `SELECT * FROM BASKETS WHERE endpoint = $1`, [newEndPoint]
       )
       if (!res.rows.length) { break }
     }
