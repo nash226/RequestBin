@@ -46,17 +46,22 @@ app.get('/api/web/baskets', async (req, res) => {
 });
 app.post("/api/web/:id", async (req, res) => {
     let masterToken = req.headers['master-token'];
-    // if new user, then generate a master token and set that string to masterToken 
-    if (!masterToken) {
-        await generateMasterToken().then(newMasterTokenRow => masterToken = newMasterTokenRow.token);
-    }
     let masterTokenId;
-    try {
-        let result = await pool.query(`SELECT id FROM master_tokens WHERE token = $1`, [masterToken]);
-        masterTokenId = result.rows[0].id;
+    // if new user, then generate a master token and set that string to masterToken + set id too
+    if (!masterToken) {
+        await generateMasterToken().then(newMasterTokenRow => {
+            masterToken = newMasterTokenRow.token;
+            masterTokenId = newMasterTokenRow.id;
+        });
     }
-    catch (err) {
-        return res.status(500).send(`Error retrieving master token ID`);
+    else {
+        try {
+            let result = await pool.query(`SELECT id FROM master_tokens WHERE token = $1`, [masterToken]);
+            masterTokenId = result.rows[0].id;
+        }
+        catch (err) {
+            return res.status(500).send(`Error retrieving master token ID`);
+        }
     }
     let newEndPoint = generateEndpoint();
     let attempts = 0;
@@ -79,7 +84,7 @@ app.post("/api/web/:id", async (req, res) => {
         // inserts new endpoint into the database
         await pool.query(`INSERT INTO baskets (endpoint, config_response, master_token_id)
       VALUES ($1, $2, $3);`, [newEndPoint, {}, masterTokenId]);
-        res.status(200).send(newEndPoint);
+        res.status(200).json({ masterToken, newEndPoint });
     }
     catch (err) {
         res.status(500).send(`Error creating new basket`);
@@ -110,15 +115,39 @@ app.get("/api/web/:id", async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 });
-app.all('/:id', (req, res) => {
-    const data = {
-        method: req.method,
-        path: req.path,
-        headers: req.headers,
-        body: req.body
-    };
-    //const newBody = new mongoExecutor({requestPayload: data})
-    //newBody.save()
+app.all('/:id', async (req, res) => {
+    const endpoint = req.params.id;
+    //find the corresponding basket
+    let basketId;
+    try {
+        const basketResult = await pool.query(`SELECT id FROM baskets WHERE endpoint = $1`, [endpoint]);
+        // evac if not found
+        if (!basketResult.rows.length)
+            return res.status(404).send('Basket not found');
+        basketId = basketResult.rows[0].id;
+    }
+    catch (err) {
+        return res.status(500).send('Error finding basket');
+    }
+    //save the body to mongodb
+    let mongoId;
+    try {
+        const mongoDoc = await mongoExecutor.create({ requestPayload: req.body });
+        mongoId = mongoDoc._id.toString();
+    }
+    catch (err) {
+        return res.status(500).send('Error saving to Mongo database');
+    }
+    //save metadata to postgres
+    // PG will alegedly cast the date and times to the correct columns with the duplicate NOW() calls. Not tested yet. 
+    try {
+        await pool.query(`INSERT INTO requests (basket_id, method, headers, request_date, request_time, mongodb_id)
+       VALUES ($1, $2, $3, NOW(), NOW(), $4)`, [basketId, req.method, req.headers, mongoId]);
+    }
+    catch (err) {
+        return res.status(500).send('Error sending metadata to PGdb');
+    }
+    res.status(200).send(`Request captured.`);
 });
 //Error Handler
 //Start Server

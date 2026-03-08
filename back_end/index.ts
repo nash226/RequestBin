@@ -55,22 +55,25 @@ app.get('/api/web/baskets', async (req, res) => {
 
 app.post("/api/web/:id", async (req, res) => {
   let masterToken = req.headers['master-token'];
-
-  // if new user, then generate a master token and set that string to masterToken 
-  if (!masterToken) {
-    await generateMasterToken().then(newMasterTokenRow => masterToken = newMasterTokenRow.token)
-  }
-
   let masterTokenId;
 
-  try {
-    let result = await pool.query(
-      `SELECT id FROM master_tokens WHERE token = $1`, [masterToken]
-    )
-    masterTokenId = result.rows[0].id;
-  } catch (err) {
-    return res.status(500).send(`Error retrieving master token ID`)
+  // if new user, then generate a master token and set that string to masterToken + set id too
+  if (!masterToken) {
+    await generateMasterToken().then(newMasterTokenRow => {
+      masterToken = newMasterTokenRow.token;
+      masterTokenId = newMasterTokenRow.id
+    })
+  } else { 
+    try {
+      let result = await pool.query(
+        `SELECT id FROM master_tokens WHERE token = $1`, [masterToken]
+      )
+      masterTokenId = result.rows[0].id;
+    } catch (err) {
+      return res.status(500).send(`Error retrieving master token ID`)
+    }
   }
+
 
   let newEndPoint = generateEndpoint();
   let attempts = 0;
@@ -97,7 +100,7 @@ app.post("/api/web/:id", async (req, res) => {
       `INSERT INTO baskets (endpoint, config_response, master_token_id)
       VALUES ($1, $2, $3);`, [newEndPoint, {}, masterTokenId]
     )
-    res.status(200).send(newEndPoint);
+    res.status(200).json({ masterToken, newEndPoint });
   } catch (err) {
     res.status(500).send(`Error creating new basket`);
   }
