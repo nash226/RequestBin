@@ -34,7 +34,7 @@ app.get('/api/web', (req, res) => {
 })
 
 app.get('/api/web/baskets', async (req, res) => {
-  const { masterToken } = req.body;
+  const masterToken = req.headers['master-token'];
 
   if (!masterToken) return res.status(204).json({}) // early exit if no token exists
 
