@@ -88,6 +88,8 @@ app.post("/api/web/:id", async (req, res) => {
       newEndPoint = generateEndpoint();
       attempts++;
     }
+
+    //continues here if no clash of endpoints was found
     if (attempts === MAX_ATTEMPTS) return res.status(500).send('Failed to generate unique endpoint');
     
     // inserts new endpoint into the database
@@ -110,16 +112,20 @@ app.get("/api/web/:id", async (req, res) => {
       [basketId]
     );
 
+    //result is an object, with a rows property (array) containing objects (individual rows)
     // Fetch MongoDB data for each row
     await Promise.all(result.rows.map(async (rowObj) => {
+      // potential mismatch with column name here
       if (rowObj.mongoId) { // make sure mongoId exists
         const objectId = new ObjectId(rowObj.mongoId);
+        // .lean() returns plain js obj instead of mongoose doc containing extra methods
         const mongoResult = await mongoExecutor.findOne({ _id: objectId }).lean();
+        // not writing to psql, in memory enrichment (attaching a temp property)
         rowObj.mongoRequestBody = mongoResult;
       } 
     }));
 
-    // Return combined result
+    // Return combined result including temp property
     res.status(200).json(result.rows);
 
   } catch (err) {
@@ -127,7 +133,6 @@ app.get("/api/web/:id", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 
 app.all('/:id', (req, res) => {
   const data = {
