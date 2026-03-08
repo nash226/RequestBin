@@ -23,6 +23,32 @@
   border-radius: 8px;
 }
 
+.requests-panel {
+  padding: 1.5rem;
+  text-align: left;
+}
+
+.requests-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.request-list-item {
+  width: 100%;
+  margin-bottom: 0.5rem;
+  text-align: left;
+  padding: 0.6rem;
+}
+
+.request-detail-card {
+  border: 1px solid #ddd;
+  padding: 1rem;
+  border-radius: 8px;
+  background: #fff;
+}
+
 .App-logo {
   height: 40vmin;
   pointer-events: none;

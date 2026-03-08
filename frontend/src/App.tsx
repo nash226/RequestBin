@@ -11,6 +11,7 @@ function App() {
   const [baskets, setUserBaskets] = useState([dummyBasketData]) //TODO rewire when Backend team adds endpoints
   const [selectedBasket, setSelectedBasket] = useState<string | null>(null)
   const [selectedBasketRequests, setSelectedBasketRequests] = useState<any[]>([])
+  const [selectedRequestIndex, setSelectedRequestIndex] = useState<number>(0)
   
   function buildDummyRequests(basketId: string) {
     return [
@@ -35,6 +36,7 @@ function App() {
     const basketId = String(basket)
     setSelectedBasket(basketId)
     setSelectedBasketRequests(buildDummyRequests(basketId))
+    setSelectedRequestIndex(0)
   }
 
   useEffect(() => {
@@ -46,7 +48,6 @@ function App() {
     fetch("/api/web/baskets", {
       method: "GET",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: token }),
     })
       .then(response => response.json())
       .then((data: { token: string, baskets: any }) => {
@@ -70,19 +71,41 @@ function App() {
         </div>
       </div>
       {selectedBasket && (
-        <div style={{ padding: "1.5rem", textAlign: "left" }}>
+        <div className="requests-panel">
           <h2>Requests for Basket: {selectedBasket}</h2>
-          {selectedBasketRequests.map((request, index) => (
-            <div key={index} style={{ marginBottom: "1rem", border: "1px solid #ddd", padding: "1rem" }}>
-              <p><strong>Method:</strong> {request.method}</p>
-              <p><strong>Path:</strong> {request.path}</p>
-              <p><strong>Date:</strong> {request.date}</p>
-              <p><strong>Headers:</strong></p>
-              <pre>{JSON.stringify(request.headers, null, 2)}</pre>
-              <p><strong>Body:</strong></p>
-              <pre>{typeof request.body === "string" ? request.body : JSON.stringify(request.body, null, 2)}</pre>
+          <p>Total Requests: {selectedBasketRequests.length}</p>
+          <div className="requests-layout">
+            <div>
+              {selectedBasketRequests.map((request, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  className="request-list-item"
+                  onClick={() => setSelectedRequestIndex(index)}
+                >
+                  {request.method} {request.path} - {new Date(request.date).toLocaleString()}
+                </button>
+              ))}
             </div>
-          ))}
+
+            <div className="request-detail-card">
+              {selectedBasketRequests[selectedRequestIndex] && (
+                <>
+                  <p><strong>Method:</strong> {selectedBasketRequests[selectedRequestIndex].method}</p>
+                  <p><strong>Path:</strong> {selectedBasketRequests[selectedRequestIndex].path}</p>
+                  <p><strong>Date:</strong> {selectedBasketRequests[selectedRequestIndex].date}</p>
+                  <p><strong>Headers:</strong></p>
+                  <pre>{JSON.stringify(selectedBasketRequests[selectedRequestIndex].headers, null, 2)}</pre>
+                  <p><strong>Body:</strong></p>
+                  <pre>
+                    {typeof selectedBasketRequests[selectedRequestIndex].body === "string"
+                      ? selectedBasketRequests[selectedRequestIndex].body
+                      : JSON.stringify(selectedBasketRequests[selectedRequestIndex].body, null, 2)}
+                  </pre>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
