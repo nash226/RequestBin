@@ -62,6 +62,10 @@ function App() {
 
   return (
     <div className="App">
+      <header className="app-hero">
+        <p className="eyebrow">Request Bin</p>
+        <h1>Inspect HTTP Traffic Instantly</h1>
+      </header>
       <div className="component-container">
         <div className="new-basket-panel">
           <NewBasket />
@@ -72,18 +76,21 @@ function App() {
       </div>
       {selectedBasket && (
         <div className="requests-panel">
-          <h2>Requests for Basket: {selectedBasket}</h2>
-          <p>Total Requests: {selectedBasketRequests.length}</p>
+          <h2>Requests for Basket</h2>
+          <p className="basket-url">{selectedBasket}</p>
+          <p className="request-total">Total Requests: {selectedBasketRequests.length}</p>
           <div className="requests-layout">
-            <div>
+            <div className="request-history">
               {selectedBasketRequests.map((request, index) => (
                 <button
                   key={index}
                   type="button"
-                  className="request-list-item"
+                  className={`request-list-item ${selectedRequestIndex === index ? 'active' : ''}`}
                   onClick={() => setSelectedRequestIndex(index)}
                 >
-                  {request.method} {request.path} - {new Date(request.date).toLocaleString()}
+                  <span className="request-method">{request.method}</span>
+                  <span className="request-path">{request.path}</span>
+                  <span className="request-date">{new Date(request.date).toLocaleString()}</span>
                 </button>
               ))}
             </div>

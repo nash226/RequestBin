@@ -1,52 +1,206 @@
 .App {
   text-align: center;
+  min-height: 100vh;
+  padding: 1.2rem;
+  color: #e7f8ff;
+  background:
+    radial-gradient(circle at 8% 12%, rgba(0, 255, 194, 0.2), transparent 40%),
+    radial-gradient(circle at 92% 24%, rgba(0, 149, 255, 0.24), transparent 38%),
+    linear-gradient(160deg, #071017 0%, #0b1c2a 50%, #091a24 100%);
+  font-family: 'Space Grotesk', 'Avenir Next', 'Segoe UI', sans-serif;
+}
+
+.app-hero {
+  margin: 0 auto 1.2rem;
+  max-width: 1100px;
+  text-align: left;
+}
+
+.app-hero h1 {
+  margin: 0.15rem 0 0;
+  font-size: clamp(1.8rem, 4vw, 2.7rem);
+  letter-spacing: 0.02em;
+}
+
+.eyebrow {
+  margin: 0;
+  color: #7ce6d0;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.78rem;
+  font-weight: 700;
 }
 
 .component-container {
   display: flex;
   gap: 1.5rem;
-  padding: 1.5rem;
+  padding: 0;
   align-items: flex-start;
+  max-width: 1100px;
+  margin: 0 auto;
 }
 
 .new-basket-panel {
   flex: 2;
-  background-color: #d0dbff;
+  background: linear-gradient(160deg, rgba(31, 53, 78, 0.86), rgba(20, 40, 58, 0.9));
   padding: 1.5rem;
-  border-radius: 8px;
+  border-radius: 16px;
+  border: 1px solid rgba(147, 203, 239, 0.2);
+  box-shadow: 0 16px 40px rgba(3, 8, 14, 0.45);
 }
 
 .my-baskets-panel {
   flex: 1;
-  background-color: #ddd0ff;
+  background: linear-gradient(160deg, rgba(35, 46, 80, 0.85), rgba(25, 38, 66, 0.9));
   padding: 1.5rem;
-  border-radius: 8px;
+  border-radius: 16px;
+  border: 1px solid rgba(147, 203, 239, 0.2);
+  box-shadow: 0 16px 40px rgba(3, 8, 14, 0.45);
+}
+
+.subtle-text {
+  color: #a8c8dd;
+  margin-top: 0;
 }
 
 .requests-panel {
+  max-width: 1100px;
+  margin: 1rem auto 0;
   padding: 1.5rem;
   text-align: left;
+  border-radius: 16px;
+  border: 1px solid rgba(147, 203, 239, 0.2);
+  background: linear-gradient(160deg, rgba(21, 44, 61, 0.88), rgba(13, 31, 48, 0.9));
+  box-shadow: 0 16px 40px rgba(3, 8, 14, 0.45);
+}
+
+.basket-url {
+  margin: 0.2rem 0;
+  color: #7ed6ff;
+}
+
+.request-total {
+  margin-top: 0;
+  color: #9ec4d9;
 }
 
 .requests-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.1fr);
   gap: 1rem;
   align-items: start;
 }
 
 .request-list-item {
   width: 100%;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.6rem;
   text-align: left;
-  padding: 0.6rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(158, 209, 238, 0.26);
+  border-radius: 10px;
+  background: rgba(16, 32, 46, 0.72);
+  color: #ddf6ff;
+  display: grid;
+  gap: 0.15rem;
+  transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease;
+}
+
+.request-list-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(78, 240, 199, 0.65);
+}
+
+.request-list-item.active {
+  border-color: #49e8c5;
+  background: rgba(23, 53, 65, 0.95);
+}
+
+.request-method {
+  font-weight: 700;
+  color: #8bf2d7;
+  font-size: 0.86rem;
+}
+
+.request-path {
+  font-size: 0.92rem;
+  word-break: break-all;
+}
+
+.request-date {
+  color: #8eb8cc;
+  font-size: 0.76rem;
 }
 
 .request-detail-card {
-  border: 1px solid #ddd;
+  border: 1px solid rgba(158, 209, 238, 0.28);
   padding: 1rem;
+  border-radius: 12px;
+  background: rgba(10, 23, 35, 0.78);
+}
+
+.request-detail-card pre {
+  margin-top: 0.35rem;
+  padding: 0.6rem;
   border-radius: 8px;
-  background: #fff;
+  background: rgba(2, 10, 19, 0.85);
+  border: 1px solid rgba(90, 175, 219, 0.28);
+  color: #cde9ff;
+  overflow-x: auto;
+}
+
+.basket-list-row {
+  margin: 0.45rem 0;
+}
+
+.basket-link {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(158, 209, 238, 0.28);
+  border-radius: 10px;
+  padding: 0.65rem 0.7rem;
+  background: rgba(18, 33, 57, 0.74);
+  color: #d9ecff;
+  transition: border-color 140ms ease, transform 140ms ease;
+}
+
+.basket-link:hover {
+  border-color: rgba(78, 240, 199, 0.7);
+  transform: translateY(-1px);
+}
+
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.input-row input {
+  flex: 1;
+  max-width: 300px;
+  border-radius: 10px;
+  border: 1px solid rgba(158, 209, 238, 0.35);
+  background: rgba(4, 13, 24, 0.68);
+  color: #ebfaff;
+  padding: 0.52rem 0.65rem;
+}
+
+.cta-button {
+  border: 0;
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #26d5aa, #2b88ff);
+  color: #042233;
+}
+
+@media (max-width: 900px) {
+  .component-container {
+    flex-direction: column;
+  }
+
+  .requests-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 .App-logo {

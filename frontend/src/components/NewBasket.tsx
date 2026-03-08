@@ -20,8 +20,8 @@ const NewBasket = () => {
     <div>
       <h1>New Basket</h1>
       <p>Create a new basket to send HTTP requests to.</p>
-      <p>http://localhost:3000/<input></input></p>
-      <button onClick={handleCreateBasket}>Create</button>
+      <p className="input-row">http://localhost:3000/<input aria-label="new-basket-path"></input></p>
+      <button className="cta-button" onClick={handleCreateBasket}>Create</button>
     </div>
   )
 }
