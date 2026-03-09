@@ -23,14 +23,10 @@ const generateEndpoint = () => {
 app.use(express.json()); // JSON bodies
 app.use(express.urlencoded({ extended: true })); // URL-encoded bodies
 app.use(express.text({ type: 'text/*' })); // Text bodies
-// health check endpoint
-app.get('/api/web', (req, res) => {
-    res.status(200).json({}); // need to chain otherwise request will hang
-});
 app.get('/api/web/baskets', async (req, res) => {
     const masterToken = req.headers['master-token'];
     if (!masterToken)
-        return res.status(204).json({}); // early exit if no token exists
+        return res.status(204).send(); // early exit if no token exists
     // retrieving all rows in baskets table matching the mastertoken id
     try {
         const result = await pool.query(`SELECT b.*
@@ -44,8 +40,35 @@ app.get('/api/web/baskets', async (req, res) => {
         res.status(500).send('Error retrieving baskets.');
     }
 });
-app.post("/api/web/:id", async (req, res) => {
+app.get('/api/web', async (req, res) => {
+    let newEndPoint = generateEndpoint();
+    let attempts = 0;
+    const MAX_ATTEMPTS = 5;
+    // check for duplicated endpoint
+    try {
+        while (attempts < MAX_ATTEMPTS) {
+            let result = await pool.query(`SELECT * FROM BASKETS WHERE endpoint = $1`, [newEndPoint]);
+            // evaluate if psql returned a row and breaks out if so
+            if (!result.rows.length) {
+                break;
+            }
+            // creates another endpoint and loops if exists in psql
+            newEndPoint = generateEndpoint();
+            attempts++;
+        }
+        //continues here if no clash of endpoints was found
+        if (attempts === MAX_ATTEMPTS) {
+            throw new Error;
+        }
+        res.status(200).json({ newEndPoint });
+    }
+    catch (err) {
+        return res.status(500).send('Failed to generate unique endpoint');
+    }
+});
+app.post("/api/web/:endpoint", async (req, res) => {
     let masterToken = req.headers['master-token'];
+    const newEndPoint = req.params.endpoint;
     let masterTokenId;
     // if new user, then generate a master token and set that string to masterToken + set id too
     if (!masterToken) {
@@ -63,24 +86,7 @@ app.post("/api/web/:id", async (req, res) => {
             return res.status(500).send(`Error retrieving master token ID`);
         }
     }
-    let newEndPoint = generateEndpoint();
-    let attempts = 0;
-    const MAX_ATTEMPTS = 5;
-    // check for duplicated endpoint
     try {
-        while (attempts < MAX_ATTEMPTS) {
-            let result = await pool.query(`SELECT * FROM BASKETS WHERE endpoint = $1`, [newEndPoint]);
-            // evaluate if psql returned a row and breaks out if so
-            if (!result.rows.length) {
-                break;
-            }
-            // creates another endpoint and loops if exists in psql
-            newEndPoint = generateEndpoint();
-            attempts++;
-        }
-        //continues here if no clash of endpoints was found
-        if (attempts === MAX_ATTEMPTS)
-            return res.status(500).send('Failed to generate unique endpoint');
         // inserts new endpoint into the database
         await pool.query(`INSERT INTO baskets (endpoint, config_response, master_token_id)
       VALUES ($1, $2, $3);`, [newEndPoint, {}, masterTokenId]);
@@ -90,10 +96,10 @@ app.post("/api/web/:id", async (req, res) => {
         res.status(500).send(`Error creating new basket`);
     }
 });
-app.get("/api/web/:id", async (req, res) => {
-    const basketId = req.params.id;
+app.get("/api/web/:endpoint", async (req, res) => {
+    const endpoint = req.params.endpoint;
     try {
-        const result = await pool.query(`SELECT * FROM requests WHERE basket_id = $1`, [basketId]);
+        const result = await pool.query(`SELECT * FROM requests WHERE endpoint = $1`, [endpoint]);
         //result is an object, with a rows property (array) containing objects (individual rows)
         // Fetch MongoDB data for each row
         await Promise.all(result.rows.map(async (rowObj) => {
