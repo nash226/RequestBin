@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import { pool, initializeSchema, generateMasterToken } from './db/psql_schema.js'
 import { mongoExecutor } from './db/mongo_schema.js';
 import mongoose from "mongoose";
+import cors from "cors";
 
 // constructor function to create a new mongo id
 const { ObjectId } = mongoose.Types;
@@ -25,6 +26,7 @@ const generateEndpoint = () => {
 
 //Middleware
 app.use(express.json()); // JSON bodies
+app.use(cors()); // enable CORS;
 app.use(express.urlencoded({ extended: true })); // URL-encoded bodies
 app.use(express.text({ type: 'text/*' })); // Text bodies
 
