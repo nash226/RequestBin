@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import { pool, initializeSchema, generateMasterToken } from './db/psql_schema.js';
 import { mongoExecutor } from './db/mongo_schema.js';
 import mongoose from "mongoose";
+import cors from "cors";
 // constructor function to create a new mongo id
 const { ObjectId } = mongoose.Types;
 //load in environment variables form .env in the root, proces as kv pairs and adding to process.env.[insert variable here]
@@ -21,6 +22,7 @@ const generateEndpoint = () => {
 };
 //Middleware
 app.use(express.json()); // JSON bodies
+app.use(cors()); // enable CORS;
 app.use(express.urlencoded({ extended: true })); // URL-encoded bodies
 app.use(express.text({ type: 'text/*' })); // Text bodies
 app.get('/api/web/baskets', async (req, res) => {
@@ -99,7 +101,8 @@ app.post("/api/web/:endpoint", async (req, res) => {
 app.get("/api/web/:endpoint", async (req, res) => {
     const endpoint = req.params.endpoint;
     try {
-        const result = await pool.query(`SELECT * FROM requests WHERE endpoint = $1`, [endpoint]);
+        const basket = await pool.query(`SELECT * FROM baskets WHERE endpoint = $1`, [endpoint]);
+        const result = await pool.query(`SELECT * FROM requests WHERE basket_id = $1`, [basket.rows[0].id]);
         //result is an object, with a rows property (array) containing objects (individual rows)
         // Fetch MongoDB data for each row
         await Promise.all(result.rows.map(async (rowObj) => {
@@ -121,20 +124,20 @@ app.get("/api/web/:endpoint", async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 });
-app.all('/:id', async (req, res) => {
-    const endpoint = req.params.id;
+app.all('/:endpoint', async (req, res) => {
+    const endpoint = req.params.endpoint;
     //find the corresponding basket
     let basketId;
     try {
         const basketResult = await pool.query(`SELECT id FROM baskets WHERE endpoint = $1`, [endpoint]);
         // evac if not found
         if (!basketResult.rows.length)
-            return res.status(404).send('Basket not found');
+            throw new Error;
         basketId = basketResult.rows[0].id;
     }
     catch (err) {
         return res.status(500).send('Error finding basket');
-    }
+    } // this is redundant; we could use endpoint as FK but for now we leave.
     //save the body to mongodb
     let mongoId;
     try {
@@ -149,11 +152,11 @@ app.all('/:id', async (req, res) => {
     try {
         await pool.query(`INSERT INTO requests (basket_id, method, headers, request_date, request_time, mongodb_id)
        VALUES ($1, $2, $3, NOW(), NOW(), $4)`, [basketId, req.method, req.headers, mongoId]);
+        res.status(200).send(`Request captured.`);
     }
     catch (err) {
         return res.status(500).send('Error sending metadata to PGdb');
     }
-    res.status(200).send(`Request captured.`);
 });
 //Error Handler
 //Start Server

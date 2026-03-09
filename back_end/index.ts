@@ -115,10 +115,17 @@ app.get("/api/web/:endpoint", async (req, res) => {
   const endpoint = req.params.endpoint;
 
   try {
-    const result = await pool.query(
-      `SELECT * FROM requests WHERE endpoint = $1`, 
+    const basket = await pool.query(
+      `SELECT * FROM baskets WHERE endpoint = $1`, 
       [endpoint]
     );
+
+    const result = await pool.query (
+      `SELECT * FROM requests WHERE basket_id = $1`,
+      [basket.rows[0].id]
+    );
+
+
 
     //result is an object, with a rows property (array) containing objects (individual rows)
     // Fetch MongoDB data for each row
