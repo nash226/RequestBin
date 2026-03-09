@@ -143,8 +143,8 @@ app.get("/api/web/:endpoint", async (req, res) => {
   }
 });
 
-app.all('/:id', async (req, res) => {
-  const endpoint = req.params.id;
+app.all('/:endpoint', async (req, res) => {
+  const endpoint = req.params.endpoint;
 
   //find the corresponding basket
   let basketId;
@@ -153,11 +153,11 @@ app.all('/:id', async (req, res) => {
       `SELECT id FROM baskets WHERE endpoint = $1`, [endpoint]
     );
     // evac if not found
-    if (!basketResult.rows.length) return res.status(404).send('Basket not found');
+    if (!basketResult.rows.length) throw new Error
     basketId = basketResult.rows[0].id;
   } catch (err) {
     return res.status(500).send('Error finding basket');
-  }
+  } // this is redundant; we could use endpoint as FK but for now we leave.
 
   //save the body to mongodb
   let mongoId;
@@ -176,11 +176,10 @@ app.all('/:id', async (req, res) => {
        VALUES ($1, $2, $3, NOW(), NOW(), $4)`,
        [basketId, req.method, req.headers, mongoId]
     );
+    res.status(200).send(`Request captured.`)
   } catch (err) {
     return res.status(500).send('Error sending metadata to PGdb')
   }
-
-  res.status(200).send(`Request captured.`)
 });
 
 //Error Handler
