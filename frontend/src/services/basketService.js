@@ -1,11 +1,22 @@
 import axios from 'axios'
 
-const baseURL = 'http://localhost:3000/api/web'
+const baseURL = '/api/web'
 
-const create = (newBasket) => {
-  return axios.post(baseURL, newBasket)
+const generateEndpoint = () => {
+  return axios.get(baseURL)
+}
+
+const create = (endpoint, masterToken) => {
+  const headers = masterToken ? { 'master-token': masterToken } : {}
+  return axios.post(`${baseURL}/${endpoint}`, {}, { headers })
+}
+
+const getRequests = (endpoint) => {
+  return axios.get(`${baseURL}/${endpoint}`)
 }
 
 export default {
-  create
+  generateEndpoint,
+  create,
+  getRequests
 }

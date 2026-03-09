@@ -1,18 +1,17 @@
 import React from 'react'
 import basketService from '../services/basketService'
 
-const NewBasket = () => {
+const NewBasket = ({ userToken, endpoint, setEndpoint, onBasketCreated }: any) => {
 
-  function handleCreateBasket(event: any) {
+  async function handleCreateBasket(event: any) {
     event.preventDefault()
-    let url = event.target.previousElementSibling.childNodes[0]
-    let inputValue = event.target.previousElementSibling.children[0].value
-    let payload = {
-      body: "test data"
-    }
+    if (!endpoint) return;
 
-    if (inputValue){
-      basketService.create(payload)
+    try {
+      const response = await basketService.create(endpoint, userToken)
+      onBasketCreated?.(response.data)
+    } catch (err) {
+      console.error('Error creating basket', err)
     }
   }
 
@@ -20,7 +19,14 @@ const NewBasket = () => {
     <div>
       <h1>New Basket</h1>
       <p>Create a new basket to send HTTP requests to.</p>
-      <p className="input-row">http://localhost:3000/<input aria-label="new-basket-path"></input></p>
+      <p className="input-row">
+        http://localhost:3000/
+        <input
+          aria-label="new-basket-path"
+          value={endpoint || ''}
+          onChange={(event) => setEndpoint?.(event.target.value)}
+        />
+      </p>
       <button className="cta-button" onClick={handleCreateBasket}>Create</button>
     </div>
   )
