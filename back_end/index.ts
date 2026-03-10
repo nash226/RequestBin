@@ -147,7 +147,7 @@ app.get("/api/web/:endpoint", async (req, res) => {
   }
 });
 
-app.delete("/api/web/basket/:id", async (req, res) => {
+app.delete("/api/web/requests/:id", async (req, res) => {
   const requestId = req.params.id;
 
   try {
