@@ -7,10 +7,9 @@ import basketService from './services/basketService'
 function App() {
 
   const backendBaseUrl = 'http://localhost:3000'
-  const dummyBasketData = `${backendBaseUrl}/asjdfj`
   
   const [userToken, setUserToken] = useState<string | null>(null)
-  const [baskets, setUserBaskets] = useState([dummyBasketData]) //TODO rewire when Backend team adds endpoints
+  const [baskets, setUserBaskets] = useState<string[]>([])
   const [selectedBasket, setSelectedBasket] = useState<string | null>(null)
   const [selectedBasketRequests, setSelectedBasketRequests] = useState<any[]>([])
   const [selectedRequestIndex, setSelectedRequestIndex] = useState<number>(0)
