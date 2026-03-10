@@ -12,8 +12,7 @@ export interface RequestBodyDocument extends Document {
 const requestBodySchema = new mongoose.Schema<RequestBodyDocument>({
   requestPayload: {
     type: Schema.Types.Mixed,
-    required: true,
-    default: {}
+    required: true
   }
 })
 
