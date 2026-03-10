@@ -124,8 +124,6 @@ app.get("/api/web/:endpoint", async (req, res) => {
       [endpoint]
     );
 
-
-
     //result is an object, with a rows property (array) containing objects (individual rows)
     // Fetch MongoDB data for each row
     await Promise.all(result.rows.map(async (rowObj) => {
@@ -148,6 +146,24 @@ app.get("/api/web/:endpoint", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+app.delete("/api/web/basket/:id", async (req, res) => {
+  const requestId = req.params.id;
+
+  try {
+    const result = await pool.query(
+      `DELETE FROM requests WHERE id = $1 RETURNING *`,
+      [requestId]
+    );
+    const mongoId = result.rows[0].mongodb_id;
+    await mongoExecutor.findByIdAndDelete(mongoId);
+    return res.status(204).send();
+  } catch (err) {
+    console.log(`either postgres or mongo delete function failed`, err);
+    return res.status(500).send(`problem deleting request`);
+  }
+
+})
 
 app.all('/:endpoint', async (req, res) => {
   const endpoint = req.params.endpoint;
