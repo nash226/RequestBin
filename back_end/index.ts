@@ -114,9 +114,13 @@ app.get("/api/web/:endpoint", async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT * FROM requests WHERE endpoint = $1`, 
+      `SELECT r.*
+      FROM requests r
+      JOIN baskets b ON r.basket_id = b.id
+      WHERE b.endpoint = $1
+      ORDER BY r.id DESC`,
       [endpoint]
-    );
+  );
 
     //result is an object, with a rows property (array) containing objects (individual rows)
     // Fetch MongoDB data for each row
@@ -160,9 +164,18 @@ app.all('/:id', async (req, res) => {
   //save the body to mongodb
   let mongoId;
   try {
-    const mongoDoc = await mongoExecutor.create({ requestPayload: req.body });
+    const normalizedPayload = {
+      method: req.method,
+      path: req.originalUrl,
+      query: req.query ?? {},
+      headers: req.headers ?? {},
+      body: req.body === undefined || req.body === null || req.body === '' ? {} : req.body,
+    };
+
+    const mongoDoc = await mongoExecutor.create({ requestPayload: normalizedPayload });
     mongoId = mongoDoc._id.toString();
   } catch (err) {
+    console.error('Mongo save error:', err);
     return res.status(500).send('Error saving to Mongo database');
   }
 
