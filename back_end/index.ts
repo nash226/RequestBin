@@ -115,14 +115,13 @@ app.get("/api/web/:endpoint", async (req, res) => {
   const endpoint = req.params.endpoint;
 
   try {
-    const basket = await pool.query(
-      `SELECT * FROM baskets WHERE endpoint = $1`, 
-      [endpoint]
-    );
-
     const result = await pool.query (
-      `SELECT * FROM requests WHERE basket_id = $1`,
-      [basket.rows[0].id]
+      `SELECT r.*
+      FROM requests r
+      JOIN baskets b ON r.basket_id = b.id
+      WHERE b.endpoint = $1
+      ORDER BY r.id DESC`,
+      [endpoint]
     );
 
 
