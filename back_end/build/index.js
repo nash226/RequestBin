@@ -4,6 +4,9 @@ import { pool, initializeSchema, generateMasterToken } from './db/psql_schema.js
 import { mongoExecutor } from './db/mongo_schema.js';
 import mongoose from "mongoose";
 import cors from "cors";
+//for websockets
+import http from "http";
+import { Server } from "socket.io";
 // constructor function to create a new mongo id
 const { ObjectId } = mongoose.Types;
 //load in environment variables form .env in the root, proces as kv pairs and adding to process.env.[insert variable here]
@@ -25,6 +28,21 @@ app.use(express.json()); // JSON bodies
 app.use(cors()); // enable CORS;
 app.use(express.urlencoded({ extended: true })); // URL-encoded bodies
 app.use(express.text({ type: 'text/*' })); // Text bodies
+//creating raw http server; need this for socket.io; express's protocol by default is too low
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "*", // for dev purposes; we should restrict this to frontend url in time
+        methods: ["GET", "POST"]
+    }
+});
+io.on("connection", (socket) => {
+    console.log("connected to frontend");
+    socket.on("disconnect", () => {
+        console.log("frontend disconnected");
+    });
+});
+//routes
 app.get('/api/web/baskets', async (req, res) => {
     const masterToken = req.headers['master-token'];
     if (!masterToken)
@@ -102,10 +120,13 @@ app.get("/api/web/:endpoint", async (req, res) => {
     const endpoint = req.params.endpoint;
     try {
         const result = await pool.query(`SELECT r.*
-      FROM requests r
-      JOIN baskets b ON r.basket_id = b.id
+      FROM baskets b
+      LEFT JOIN requests r ON r.basket_id = b.id
       WHERE b.endpoint = $1
-      ORDER BY r.id DESC`, [endpoint]);
+      ORDER BY r.id DESC;`, [endpoint]);
+        if (!result.rows.length) {
+            return res.status(404).send();
+        }
         //result is an object, with a rows property (array) containing objects (individual rows)
         // Fetch MongoDB data for each row
         await Promise.all(result.rows.map(async (rowObj) => {
@@ -180,11 +201,13 @@ app.all('/:endpoint', async (req, res) => {
     //save metadata to postgres
     // PG will alegedly cast the date and times to the correct columns with the duplicate NOW() calls. Not tested yet. 
     try {
-        await pool.query(`INSERT INTO requests (basket_id, method, headers, request_date, request_time, mongodb_id)
+        const result = await pool.query(`INSERT INTO requests (basket_id, method, headers, request_date, request_time, mongodb_id)
       SELECT b.id, $1, $2, NOW(), NOW(), $3
       FROM baskets b
-      WHERE endpoint = $4`, [req.method, req.headers, mongoId, endpoint]);
-        res.status(200).send(`Request captured.`);
+      WHERE endpoint = $4
+      RETURNING *`, [req.method, req.headers, mongoId, endpoint]);
+        io.emit("newRequest", { requestMetadata: result.rows[0], endpoint, body: req.body });
+        res.status(200).send(`Request captured and emmited via socket.`);
     }
     catch (err) {
         return res.status(500).send('Error sending metadata to PGdb');
@@ -193,7 +216,7 @@ app.all('/:endpoint', async (req, res) => {
 //Error Handler
 //Start Server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Running on port ${PORT}`);
 });
 //# sourceMappingURL=index.js.map

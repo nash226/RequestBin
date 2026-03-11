@@ -142,12 +142,14 @@ app.get("/api/web/:endpoint", async (req, res) => {
   try {
     const result = await pool.query (
       `SELECT r.*
-      FROM requests r
-      JOIN baskets b ON r.basket_id = b.id
+      FROM baskets b
+      LEFT JOIN requests r ON r.basket_id = b.id
       WHERE b.endpoint = $1
-      ORDER BY r.id DESC`,
+      ORDER BY r.id DESC;`,
       [endpoint]
     );
+
+    if (!result.rows.length) { return res.status(404).send() }
 
     //result is an object, with a rows property (array) containing objects (individual rows)
     // Fetch MongoDB data for each row
