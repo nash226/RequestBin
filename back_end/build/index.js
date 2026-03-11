@@ -101,8 +101,11 @@ app.post("/api/web/:endpoint", async (req, res) => {
 app.get("/api/web/:endpoint", async (req, res) => {
     const endpoint = req.params.endpoint;
     try {
-        const basket = await pool.query(`SELECT * FROM baskets WHERE endpoint = $1`, [endpoint]);
-        const result = await pool.query(`SELECT * FROM requests WHERE basket_id = $1`, [basket.rows[0].id]);
+        const result = await pool.query(`SELECT r.*
+      FROM requests r
+      JOIN baskets b ON r.basket_id = b.id
+      WHERE b.endpoint = $1
+      ORDER BY r.id DESC`, [endpoint]);
         //result is an object, with a rows property (array) containing objects (individual rows)
         // Fetch MongoDB data for each row
         await Promise.all(result.rows.map(async (rowObj) => {
@@ -122,6 +125,19 @@ app.get("/api/web/:endpoint", async (req, res) => {
     catch (err) {
         console.error("Failed to interface with DB:", err);
         res.status(500).json({ error: "Internal server error" });
+    }
+});
+app.delete("/api/web/requests/:id", async (req, res) => {
+    const requestId = req.params.id;
+    try {
+        const result = await pool.query(`DELETE FROM requests WHERE id = $1 RETURNING *`, [requestId]);
+        const mongoId = result.rows[0].mongodb_id;
+        await mongoExecutor.findByIdAndDelete(mongoId);
+        return res.status(204).send();
+    }
+    catch (err) {
+        console.log(`either postgres or mongo delete function failed`, err);
+        return res.status(500).send(`problem deleting request`);
     }
 });
 app.all('/:endpoint', async (req, res) => {

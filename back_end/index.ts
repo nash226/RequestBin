@@ -147,6 +147,38 @@ app.get("/api/web/:endpoint", async (req, res) => {
   }
 });
 
+// route to delete an entire basket
+app.delete("/api/web/:endpoint", async (req, res) => {
+  const endpoint = req.params.endpoint;
+  // retrieve all rows in baskets with the endpoint passed in 
+  try {
+    const requestsResult = await pool.query(
+      `SELECT r.mongodb_id
+       FROM requests r
+       JOIN baskets b ON r.basket_id = b.id
+       WHERE b.endpoint = $1`,
+      [endpoint]
+    );
+    const mongoIds = requestsResult.rows
+    // creating a array to contain just mongodb_id's
+      .map(row => row.mongodb_id)
+    // creatging new array of Mongo ID objects
+      .map(id => new ObjectId(id));
+    
+    // delete endpoint from baskets, on delete cascade should delete requests too
+    await pool.query(`DELETE FROM baskets WHERE endpoint = $1`, [endpoint]);
+
+    // delete from Mongo database all docs that were associated with the basket id
+    await mongoExecutor.deleteMany({ _id: { $in: mongoIds } });
+
+    return res.status(204).send();
+  } catch (err) {
+    console.error('Error deleting basket:', err);
+    return res.status(500).send('Error deleting basket');
+  }
+})
+
+// route to delete specific requests. 
 app.delete("/api/web/requests/:id", async (req, res) => {
   const requestId = req.params.id;
 
