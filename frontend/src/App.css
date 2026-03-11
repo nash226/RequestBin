@@ -149,10 +149,13 @@
 
 .basket-list-row {
   margin: 0.45rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .basket-link {
-  width: 100%;
+  flex: 1;
   text-align: left;
   border: 1px solid #d3deea;
   border-radius: 10px;
@@ -166,6 +169,22 @@
 .basket-link:hover {
   border-color: #9eb2c7;
   background: #f2f7fc;
+}
+
+.basket-delete-button {
+  border: 1px solid #e0a0a0;
+  border-radius: 10px;
+  padding: 0.65rem 0.7rem;
+  background: #fff5f5;
+  color: #c0392b;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.basket-delete-button:hover {
+  border-color: #c0392b;
+  background: #fde8e8;
 }
 
 .input-row {

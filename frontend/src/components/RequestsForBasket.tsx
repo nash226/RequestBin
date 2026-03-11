@@ -34,6 +34,13 @@ const RequestsForBasket = ({ selectedBasket }: { selectedBasket: string }) => {
   const [selectedBasketRequests, setSelectedBasketRequests] = useState<any[]>([])
   const [selectedRequestIndex, setSelectedRequestIndex] = useState<number>(0)
 
+  function handleRequestDelete(request: any) {
+    const requestId = request.id
+    basketService.deleteRequest(requestId)
+    .then(() => setSelectedBasketRequests((prev) => prev.filter((r) => r !== request)))
+    .catch(error => console.error(error))
+  }
+
   useEffect(() => {
     const endpoint = getEndpointFromBasketValue(selectedBasket)
     setSelectedRequestIndex(0)
@@ -95,16 +102,18 @@ const RequestsForBasket = ({ selectedBasket }: { selectedBasket: string }) => {
       <div className="requests-layout">
         <div className="request-history">
           {selectedBasketRequests.map((request, index) => (
-            <button
-              key={request.id || index}
-              type="button"
-              className={`request-list-item ${selectedRequestIndex === index ? 'active' : ''}`}
-              onClick={() => setSelectedRequestIndex(index)}
-            >
-              <span className="request-method">{request.method}</span>
-              <span className="request-path">{request.path}</span>
-              <span className="request-date">{new Date(request.date).toLocaleString()}</span>
-            </button>
+            <div key={request.id || index} className="basket-list-row">
+              <button
+                type="button"
+                className={`request-list-item ${selectedRequestIndex === index ? 'active' : ''}`}
+                onClick={() => setSelectedRequestIndex(index)}
+                >
+                <span className="request-method">{request.method}</span>
+                <span className="request-path">{request.path}</span>
+                <span className="request-date">{new Date(request.date).toLocaleString()}</span>
+              </button>
+              <button className="basket-delete-button" onClick={() => handleRequestDelete(request)}>Delete</button>
+            </div>
           ))}
         </div>
 

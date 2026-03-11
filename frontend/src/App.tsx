@@ -17,7 +17,12 @@ function App() {
 
   async function handleBasketClick(basket: any) {
     const basketId = String(basket)
+    console.log(basket)
     setSelectedBasket(basketId)
+  }
+
+  async function handleBasketDeleted(basket: any) {
+    setUserBaskets((prev) => prev.filter((b) => b !== basket))
   }
 
   function handleBasketCreated(data: any) {
@@ -93,7 +98,7 @@ function App() {
           />
         </div>
         <div className="my-baskets-panel">
-          <MyBaskets baskets={baskets} onBasketClick={handleBasketClick} />
+          <MyBaskets baskets={baskets} onBasketClick={handleBasketClick} onBasketDelete={handleBasketDeleted}/>
         </div>
       </div>
       {selectedBasket && (
