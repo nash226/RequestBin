@@ -5,6 +5,10 @@ import { mongoExecutor } from './db/mongo_schema.js';
 import mongoose from "mongoose";
 import cors from "cors";
 
+//for websockets
+import http from "http";
+import { Server } from "socket.io";
+
 // constructor function to create a new mongo id
 const { ObjectId } = mongoose.Types;
 //load in environment variables form .env in the root, proces as kv pairs and adding to process.env.[insert variable here]
@@ -29,6 +33,27 @@ app.use(express.json()); // JSON bodies
 app.use(cors()); // enable CORS;
 app.use(express.urlencoded({ extended: true })); // URL-encoded bodies
 app.use(express.text({ type: 'text/*' })); // Text bodies
+
+//creating raw http server; need this for socket.io; express's protocol by default is too low
+const server = http.createServer(app);
+
+const io  = new Server(server, {
+  cors: {
+    origin: "*",// for dev purposes; we should restrict this to frontend url in time
+    methods: ["GET", "POST"]
+  }
+});
+
+io.on("connection", (socket) => {
+  console.log("connected to frontend");
+
+  socket.on("disconnect", () => {
+    console.log("frontend disconnected");
+  })
+})
+
+
+//routes
 
 app.get('/api/web/baskets', async (req, res) => {
   const masterToken = req.headers['master-token'];
@@ -115,23 +140,23 @@ app.get("/api/web/:endpoint", async (req, res) => {
   const endpoint = req.params.endpoint;
 
   try {
-    const result = await pool.query(
+    const result = await pool.query (
       `SELECT r.*
-      FROM requests r
-      JOIN baskets b ON r.basket_id = b.id
+      FROM baskets b
+      LEFT JOIN requests r ON r.basket_id = b.id
       WHERE b.endpoint = $1
-      ORDER BY r.id DESC`,
+      ORDER BY r.id DESC;`,
       [endpoint]
-  );
+    );
+
+    if (!result.rows.length) { return res.status(404).send() }
 
     //result is an object, with a rows property (array) containing objects (individual rows)
     // Fetch MongoDB data for each row
     await Promise.all(result.rows.map(async (rowObj) => {
-      // potential mismatch with column name here // solved, please check. Will need to rebuild tables.
-      if (rowObj.mongodb_id) { // make sure mongodb_id exists
-        const objectId = new ObjectId(rowObj.mongodb_id);
+      if (rowObj.mongodb_id) { // make sure mongodb_id exists; can be null for bodyless requests
         // .lean() returns plain js obj instead of mongoose doc containing extra methods
-        const mongoResult = await mongoExecutor.findOne({ _id: objectId }).lean();
+        const mongoResult = await mongoExecutor.findById(rowObj.mongodb_id).lean();
         // not writing to psql, in memory enrichment (attaching a temp property)
         rowObj.mongoRequestBody = mongoResult;
       }
@@ -147,53 +172,95 @@ app.get("/api/web/:endpoint", async (req, res) => {
   }
 });
 
-app.all('/:id', async (req, res) => {
-  const endpoint = req.params.id;
-
-  //find the corresponding basket
-  let basketId;
+// route to delete an entire basket
+app.delete("/api/web/:endpoint", async (req, res) => {
+  const endpoint = req.params.endpoint;
+  // retrieve all rows in baskets with the endpoint passed in 
   try {
-    const basketResult = await pool.query(
-      `SELECT id FROM baskets WHERE endpoint = $1`, [endpoint]
+    const requestsResult = await pool.query(
+      `SELECT r.mongodb_id
+       FROM requests r
+       JOIN baskets b ON r.basket_id = b.id
+       WHERE b.endpoint = $1`,
+      [endpoint]
     );
-    // evac if not found
-    if (!basketResult.rows.length) return res.status(404).send('Basket not found');
-    basketId = basketResult.rows[0].id;
-  } catch (err) {
-    return res.status(500).send('Error finding basket');
-  }
+    const mongoIds = requestsResult.rows
+    // creating a array to contain just mongodb_id's
+      .map(row => row.mongodb_id)
+    // creatging new array of Mongo ID objects
+      .map(id => new ObjectId(id));
+    
+    // delete endpoint from baskets, on delete cascade should delete requests too
+    await pool.query(`DELETE FROM baskets WHERE endpoint = $1`, [endpoint]);
 
-  //save the body to mongodb
-  let mongoId;
+    // delete from Mongo database all docs that were associated with the basket id
+    await mongoExecutor.deleteMany({ _id: { $in: mongoIds } });
+
+    return res.status(204).send();
+  } catch (err) {
+    console.error('Error deleting basket:', err);
+    return res.status(500).send('Error deleting basket');
+  }
+})
+
+// route to delete specific requests. 
+app.delete("/api/web/requests/:id", async (req, res) => {
+  const requestId = req.params.id;
+
   try {
-    const normalizedPayload = {
-      method: req.method,
-      path: req.originalUrl,
-      query: req.query ?? {},
-      headers: req.headers ?? {},
-      body: req.body === undefined || req.body === null || req.body === '' ? {} : req.body,
-    };
-
-    const mongoDoc = await mongoExecutor.create({ requestPayload: normalizedPayload });
-    mongoId = mongoDoc._id.toString();
+    const result = await pool.query(
+      `DELETE FROM requests WHERE id = $1 RETURNING *`,
+      [requestId]
+    );
+    const mongoId = result.rows[0].mongodb_id;
+    await mongoExecutor.findByIdAndDelete(mongoId);
+    return res.status(204).send();
   } catch (err) {
-    console.error('Mongo save error:', err);
-    return res.status(500).send('Error saving to Mongo database');
+    console.log(`either postgres or mongo delete function failed`, err);
+    return res.status(500).send(`problem deleting request`);
   }
+
+})
+
+app.all('/:endpoint', async (req, res) => {
+  const endpoint = req.params.endpoint;
+
+  //save the body to mongodb if there is a body;
+  let mongoId;
+
+  if (req.body) {
+    try {
+      const mongoDoc = await mongoExecutor.create({ requestPayload: req.body });
+      mongoId = mongoDoc._id.toString();
+    } catch (err) {
+      return res.status(500).send('Error saving to Mongo database');
+    }
+  }
+
 
   //save metadata to postgres
   // PG will alegedly cast the date and times to the correct columns with the duplicate NOW() calls. Not tested yet. 
   try {
-    await pool.query(
+    const result= await pool.query(
       `INSERT INTO requests (basket_id, method, headers, request_date, request_time, mongodb_id)
-       VALUES ($1, $2, $3, NOW(), NOW(), $4)`,
-       [basketId, req.method, req.headers, mongoId]
+      SELECT b.id, $1, $2, NOW(), NOW(), $3
+      FROM baskets b
+      WHERE endpoint = $4
+      RETURNING *`,
+      [req.method, req.headers, mongoId, endpoint]
     );
+
+    if (!result.rows[0]) {
+      return res.status(404).send('Basket not found');
+    }
+
+    io.emit("newRequest", { requestMetadata: result.rows[0], endpoint, body: req.body })
+
+    res.status(200).send(`Request captured and emmited via socket.`)
   } catch (err) {
+    console.error('Error sending metadata to PGdb:', err);
     return res.status(500).send('Error sending metadata to PGdb')
   }
-
-  res.status(200).send(`Request captured.`)
 });
 
 //Error Handler
@@ -202,6 +269,6 @@ app.all('/:id', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Running on port ${PORT}`)
 })

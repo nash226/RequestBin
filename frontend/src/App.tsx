@@ -3,6 +3,7 @@ import './App.css';
 import NewBasket from './components/NewBasket'
 import MyBaskets from './components/MyBaskets'
 import basketService from './services/basketService'
+import { io } from 'socket.io-client'
 
 function App() {
 
@@ -33,6 +34,7 @@ function App() {
     const combinedDate = datePart && timePart ? `${datePart}T${timePart}` : new Date().toISOString()
 
     return {
+      id: row.id || `${endpoint}-${combinedDate}`,
       method: row.method || 'UNKNOWN',
       headers: row.headers || {},
       body: row.mongoRequestBody?.requestPayload || row.body || '',
@@ -116,6 +118,40 @@ function App() {
       });
     }, []);
 
+  useEffect(() => {
+    if (!selectedBasket) return;
+
+    const selectedEndpoint = getEndpointFromBasketValue(selectedBasket);
+    const socket = io(backendBaseUrl, {
+      transports: ['websocket', 'polling'],
+    });
+
+    socket.on('newRequest', (payload: any) => {
+      if (!payload || payload.endpoint !== selectedEndpoint) return;
+
+      const normalizedRequest = normalizeRequestRow(
+        {
+          ...payload.requestMetadata,
+          body: payload.body,
+        },
+        selectedEndpoint
+      );
+
+      setSelectedBasketRequests((prev) => {
+        if (prev.some((request) => request.id === normalizedRequest.id)) {
+          return prev;
+        }
+
+        return [normalizedRequest, ...prev];
+      });
+      setSelectedRequestIndex(0);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [backendBaseUrl, selectedBasket]);
+
 
   return (
     <div className="App">
@@ -145,7 +181,7 @@ function App() {
             <div className="request-history">
               {selectedBasketRequests.map((request, index) => (
                 <button
-                  key={index}
+                  key={request.id || index}
                   type="button"
                   className={`request-list-item ${selectedRequestIndex === index ? 'active' : ''}`}
                   onClick={() => setSelectedRequestIndex(index)}

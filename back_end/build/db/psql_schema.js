@@ -13,7 +13,7 @@ const statements = [
   );`,
     `CREATE TABLE IF NOT EXISTS baskets (
       id SERIAL PRIMARY KEY,
-      endpoint CHAR(7) NOT NULL,
+      endpoint CHAR(7) UNIQUE NOT NULL,
       config_response JSONB NOT NULL,
       master_token_id INTEGER NOT NULL REFERENCES master_tokens(id) ON DELETE CASCADE,
       CONSTRAINT endpoint_alphanumeric CHECK (endpoint ~ '^[A-Za-z0-9]{7}$')
@@ -25,8 +25,13 @@ const statements = [
     headers JSONB NOT NULL,
     request_date DATE NOT NULL,
     request_time TIME NOT NULL,
-    mongodb_id VARCHAR(255) UNIQUE NOT NULL
+    mongodb_id VARCHAR(255) UNIQUE
   );`
+];
+const migrations = [
+    `ALTER TABLE requests ALTER COLUMN mongodb_id DROP NOT NULL;`,
+    `ALTER TABLE baskets
+   ADD CONSTRAINT baskets_endpoint_key UNIQUE (endpoint);`
 ];
 // Function to initialize tables
 export async function initializeSchema() {
@@ -37,6 +42,17 @@ export async function initializeSchema() {
         }
         catch (err) {
             console.error(`Error creating one or more tables`, err);
+        }
+    }
+    for (const migration of migrations) {
+        try {
+            await pool.query(migration);
+        }
+        catch (err) {
+            // Ignore duplicate-constraint creation when the unique key already exists.
+            if (err?.code !== '42P07') {
+                console.error(`Error applying schema migration`, err);
+            }
         }
     }
     console.log('Database schema initialized.');

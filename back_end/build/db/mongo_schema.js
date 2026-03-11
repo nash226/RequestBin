@@ -4,8 +4,7 @@ await mongoose.connect(mongourl);
 const requestBodySchema = new mongoose.Schema({
     requestPayload: {
         type: Schema.Types.Mixed,
-        required: true,
-        default: {}
+        required: true
     }
 });
 // strips MongoDB internals (_id, __v) and renames _id to id before the document is sent to the client
