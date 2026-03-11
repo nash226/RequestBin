@@ -25,7 +25,7 @@ const statements = [
     headers JSONB NOT NULL,
     request_date DATE NOT NULL,
     request_time TIME NOT NULL,
-    mongodb_id VARCHAR(255) UNIQUE NOT NULL
+    mongodb_id VARCHAR(255) UNIQUE
   );`
 ];
 // Function to initialize tables

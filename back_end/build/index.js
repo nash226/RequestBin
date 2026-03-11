@@ -109,11 +109,9 @@ app.get("/api/web/:endpoint", async (req, res) => {
         //result is an object, with a rows property (array) containing objects (individual rows)
         // Fetch MongoDB data for each row
         await Promise.all(result.rows.map(async (rowObj) => {
-            // potential mismatch with column name here // solved, please check. Will need to rebuild tables.
-            if (rowObj.mongodb_id) { // make sure mongodb_id exists
-                const objectId = new ObjectId(rowObj.mongodb_id);
+            if (rowObj.mongodb_id) { // make sure mongodb_id exists; can be null for bodyless requests
                 // .lean() returns plain js obj instead of mongoose doc containing extra methods
-                const mongoResult = await mongoExecutor.findOne({ _id: objectId }).lean();
+                const mongoResult = await mongoExecutor.findById(rowObj.mongodb_id).lean();
                 // not writing to psql, in memory enrichment (attaching a temp property)
                 rowObj.mongoRequestBody = mongoResult;
             }
@@ -127,6 +125,32 @@ app.get("/api/web/:endpoint", async (req, res) => {
         res.status(500).json({ error: "Internal server error" });
     }
 });
+// route to delete an entire basket
+app.delete("/api/web/:endpoint", async (req, res) => {
+    const endpoint = req.params.endpoint;
+    // retrieve all rows in baskets with the endpoint passed in 
+    try {
+        const requestsResult = await pool.query(`SELECT r.mongodb_id
+       FROM requests r
+       JOIN baskets b ON r.basket_id = b.id
+       WHERE b.endpoint = $1`, [endpoint]);
+        const mongoIds = requestsResult.rows
+            // creating a array to contain just mongodb_id's
+            .map(row => row.mongodb_id)
+            // creatging new array of Mongo ID objects
+            .map(id => new ObjectId(id));
+        // delete endpoint from baskets, on delete cascade should delete requests too
+        await pool.query(`DELETE FROM baskets WHERE endpoint = $1`, [endpoint]);
+        // delete from Mongo database all docs that were associated with the basket id
+        await mongoExecutor.deleteMany({ _id: { $in: mongoIds } });
+        return res.status(204).send();
+    }
+    catch (err) {
+        console.error('Error deleting basket:', err);
+        return res.status(500).send('Error deleting basket');
+    }
+});
+// route to delete specific requests. 
 app.delete("/api/web/requests/:id", async (req, res) => {
     const requestId = req.params.id;
     try {
@@ -142,32 +166,24 @@ app.delete("/api/web/requests/:id", async (req, res) => {
 });
 app.all('/:endpoint', async (req, res) => {
     const endpoint = req.params.endpoint;
-    //find the corresponding basket
-    let basketId;
-    try {
-        const basketResult = await pool.query(`SELECT id FROM baskets WHERE endpoint = $1`, [endpoint]);
-        // evac if not found
-        if (!basketResult.rows.length)
-            throw new Error;
-        basketId = basketResult.rows[0].id;
-    }
-    catch (err) {
-        return res.status(500).send('Error finding basket');
-    } // this is redundant; we could use endpoint as FK but for now we leave.
-    //save the body to mongodb
+    //save the body to mongodb if there is a body;
     let mongoId;
-    try {
-        const mongoDoc = await mongoExecutor.create({ requestPayload: req.body });
-        mongoId = mongoDoc._id.toString();
-    }
-    catch (err) {
-        return res.status(500).send('Error saving to Mongo database');
+    if (req.body) {
+        try {
+            const mongoDoc = await mongoExecutor.create({ requestPayload: req.body });
+            mongoId = mongoDoc._id.toString();
+        }
+        catch (err) {
+            return res.status(500).send('Error saving to Mongo database');
+        }
     }
     //save metadata to postgres
     // PG will alegedly cast the date and times to the correct columns with the duplicate NOW() calls. Not tested yet. 
     try {
         await pool.query(`INSERT INTO requests (basket_id, method, headers, request_date, request_time, mongodb_id)
-       VALUES ($1, $2, $3, NOW(), NOW(), $4)`, [basketId, req.method, req.headers, mongoId]);
+      SELECT b.id, $1, $2, NOW(), NOW(), $3
+      FROM baskets b
+      WHERE endpoint = $4`, [req.method, req.headers, mongoId, endpoint]);
         res.status(200).send(`Request captured.`);
     }
     catch (err) {
