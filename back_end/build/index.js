@@ -91,20 +91,20 @@ app.post("/api/web/:endpoint", async (req, res) => {
     const newEndPoint = req.params.endpoint;
     let masterTokenId;
     // if new user, then generate a master token and set that string to masterToken + set id too
-    if (!masterToken) {
-        await generateMasterToken().then(newMasterTokenRow => {
+    // changed this block to wrap in try/catch instead of mixing await/async
+    try {
+        if (!masterToken) {
+            const newMasterTokenRow = await generateMasterToken();
             masterToken = newMasterTokenRow.token;
             masterTokenId = newMasterTokenRow.id;
-        });
-    }
-    else {
-        try {
-            let result = await pool.query(`SELECT id FROM master_tokens WHERE token = $1`, [masterToken]);
+        }
+        else {
+            const result = await pool.query(`SELECT id FROM master_tokens WHERE token = $1`, [masterToken]);
             masterTokenId = result.rows[0].id;
         }
-        catch (err) {
-            return res.status(500).send(`Error retrieving master token ID`);
-        }
+    }
+    catch (err) {
+        return res.status(500).send(`Error resolving master token`);
     }
     try {
         // inserts new endpoint into the database
@@ -177,12 +177,28 @@ app.delete("/api/web/requests/:id", async (req, res) => {
     try {
         const result = await pool.query(`DELETE FROM requests WHERE id = $1 RETURNING *`, [requestId]);
         const mongoId = result.rows[0].mongodb_id;
-        await mongoExecutor.findByIdAndDelete(mongoId);
+        if (mongoId) {
+            await mongoExecutor.findByIdAndDelete(mongoId);
+        }
         return res.status(204).send();
     }
     catch (err) {
         console.log(`either postgres or mongo delete function failed`, err);
         return res.status(500).send(`problem deleting request`);
+    }
+});
+app.put("/api/web/:endpoint", async (req, res) => {
+    const endpoint = req.params.endpoint;
+    const newConfig = req.body;
+    try {
+        await pool.query(`UPDATE baskets
+      SET config_response = $1
+      WHERE endpoint = $2;`, [newConfig, endpoint]);
+        return res.status(200).send();
+    }
+    catch (err) {
+        console.log("update query failed", err);
+        return res.status(500).send("problem updating basket");
     }
 });
 app.all('/:endpoint', async (req, res) => {
@@ -210,6 +226,10 @@ app.all('/:endpoint', async (req, res) => {
             return res.status(404).send('Basket not found');
         }
         io.emit("newRequest", { requestMetadata: result.rows[0], endpoint, body: req.body });
+        //I suppose this is where we'd add custom responses if the basket has a non empty config_response field
+        //something like:
+        //const method = basket.config_response.method and so on for other details
+        //or capture them from the req object itself and then so on.
         res.status(200).send(`Request captured and emmited via socket.`);
     }
     catch (err) {
