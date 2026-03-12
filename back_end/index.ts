@@ -4,6 +4,8 @@ import { pool, initializeSchema, generateMasterToken } from './db/psql_schema.js
 import { mongoExecutor } from './db/mongo_schema.js';
 import mongoose from "mongoose";
 import cors from "cors";
+import path from "path";
+import { fileURLToPath } from 'url';
 
 //for websockets
 import http from "http";
@@ -16,6 +18,11 @@ dotenv.config();
 
 const app = express();
 initializeSchema();
+
+//getting express to read the static files
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use(express.static(path.join(__dirname, '..', 'dist')));
 
 const generateEndpoint = () => {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -282,6 +289,11 @@ app.all('/:endpoint', async (req, res) => {
     console.error('Error sending metadata to PGdb:', err);
     return res.status(500).send('Error sending metadata to PGdb')
   }
+});
+
+// Matches any path that does NOT contain a dot (.), so actual files like .js/.css/images are served by express.static
+app.get(/^\/(?!.*\..*).*$/, (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
 });
 
 //Error Handler
