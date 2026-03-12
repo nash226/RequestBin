@@ -213,7 +213,9 @@ app.delete("/api/web/requests/:id", async (req, res) => {
       [requestId]
     );
     const mongoId = result.rows[0].mongodb_id;
-    await mongoExecutor.findByIdAndDelete(mongoId);
+    if (mongoId) {
+      await mongoExecutor.findByIdAndDelete(mongoId);
+    }
     return res.status(204).send();
   } catch (err) {
     console.log(`either postgres or mongo delete function failed`, err);
