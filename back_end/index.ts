@@ -108,21 +108,21 @@ app.post("/api/web/:endpoint", async (req, res) => {
 
 
   // if new user, then generate a master token and set that string to masterToken + set id too
-  if (!masterToken) {
-    await generateMasterToken().then(newMasterTokenRow => {
-      masterToken = newMasterTokenRow.token;
-      masterTokenId = newMasterTokenRow.id;
-    })
-  } else { 
+  // changed this block to wrap in try/catch instead of mixing await/async
     try {
-      let result = await pool.query(
-        `SELECT id FROM master_tokens WHERE token = $1`, [masterToken]
-      );
-      masterTokenId = result.rows[0].id;
+      if (!masterToken) {
+        const newMasterTokenRow = await generateMasterToken();
+        masterToken = newMasterTokenRow.token;
+        masterTokenId = newMasterTokenRow.id;
+      } else {
+        const result = await pool.query(
+          `SELECT id FROM master_tokens WHERE token = $1`, [masterToken]
+        );
+        masterTokenId = result.rows[0].id;
+      }
     } catch (err) {
-      return res.status(500).send(`Error retrieving master token ID`)
+      return res.status(500).send(`Error resolving master token`);
     }
-  }
 
   try {
     // inserts new endpoint into the database
