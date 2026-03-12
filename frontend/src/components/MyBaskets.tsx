@@ -1,10 +1,21 @@
 import React from 'react'
 import basketService from '../services/basketService'
 
+function getEndpointFromBasketValue(basket: string) {
+  try {
+    const parsed = new URL(basket)
+    const lastSegment = parsed.pathname.split('/').filter(Boolean).pop()
+    return lastSegment || basket
+  } catch (err) {
+    const lastSegment = basket.split('/').filter(Boolean).pop()
+    return lastSegment || basket
+  }
+}
+
 const MyBaskets = (props:any) => {
 
   async function handleDeleteBasket(basket: string) {
-    const endpoint = basket.split('/')[3]
+    const endpoint = getEndpointFromBasketValue(basket)
     basketService.deleteBasket(endpoint)
       .then(() => { props.onBasketDelete(basket)})
       .catch(error => {console.error(error)})
