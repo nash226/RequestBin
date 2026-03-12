@@ -4,6 +4,7 @@ import { pool, initializeSchema, generateMasterToken } from './db/psql_schema.js
 import { mongoExecutor } from './db/mongo_schema.js';
 import mongoose from "mongoose";
 import cors from "cors";
+// needed to serve front end from the backend
 import path from "path";
 import { fileURLToPath } from 'url';
 
@@ -21,7 +22,9 @@ initializeSchema();
 
 //getting express to read the static files
 const __filename = fileURLToPath(import.meta.url);
+// strips the filename off the end giving you the directory
 const __dirname = path.dirname(__filename);
+// instructing express to serve any files in backend/dist as static assets
 app.use(express.static(path.join(__dirname, '..', 'dist')));
 
 const generateEndpoint = () => {
@@ -84,6 +87,7 @@ app.get('/api/web/baskets', async (req, res) => {
 
 app.get('/api/web', async (req, res) => {
   let newEndPoint = generateEndpoint();
+  // attempts to guard against clashing
   let attempts = 0;
   const MAX_ATTEMPTS = 5;
 
@@ -93,7 +97,7 @@ app.get('/api/web', async (req, res) => {
       let result = await pool.query(
         `SELECT * FROM BASKETS WHERE endpoint = $1`, [newEndPoint]
       );
-      // evaluate if psql returned a row and breaks out if so
+      // evaluate if psql returned a row and breaks out of loop if so
       if (!result.rows.length) { break }
       // creates another endpoint and loops if exists in psql
       newEndPoint = generateEndpoint();
@@ -108,6 +112,7 @@ app.get('/api/web', async (req, res) => {
   }
 });
 
+// creating a new basket
 app.post("/api/web/:endpoint", async (req, res) => {
   let masterToken = req.headers['master-token'];
   const newEndPoint = req.params.endpoint;
@@ -122,6 +127,7 @@ app.post("/api/web/:endpoint", async (req, res) => {
         masterToken = newMasterTokenRow.token;
         masterTokenId = newMasterTokenRow.id;
       } else {
+        // existing user
         const result = await pool.query(
           `SELECT id FROM master_tokens WHERE token = $1`, [masterToken]
         );
@@ -143,6 +149,7 @@ app.post("/api/web/:endpoint", async (req, res) => {
   }
 });
 
+// retrieving all requests for an endpoint
 app.get("/api/web/:endpoint", async (req, res) => {
   const endpoint = req.params.endpoint;
 
@@ -158,7 +165,7 @@ app.get("/api/web/:endpoint", async (req, res) => {
 
     if (!result.rows.length) { return res.status(404).send() }
 
-    //result is an object, with a rows property (array) containing objects (individual rows)
+    //result is an object (pool always returns an object), with a rows property (array) containing objects (individual rows)
     // Fetch MongoDB data for each row
     await Promise.all(result.rows.map(async (rowObj) => {
       if (rowObj.mongodb_id) { // make sure mongodb_id exists; can be null for bodyless requests
@@ -231,6 +238,8 @@ app.delete("/api/web/requests/:id", async (req, res) => {
 
 });
 
+// put to edit the config response object
+// not wired up yet
 app.put("/api/web/:endpoint", async (req, res) => {
   const endpoint = req.params.endpoint;
   const newConfig = req.body;
@@ -263,6 +272,7 @@ app.all('/:endpoint', async (req, res) => {
   }
   //save metadata to postgres
   // PG will alegedly cast the date and times to the correct columns with the duplicate NOW() calls. Not tested yet. 
+  // tested, works!
   try {
     const result= await pool.query(
       `INSERT INTO requests (basket_id, method, headers, request_date, request_time, mongodb_id)
