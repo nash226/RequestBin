@@ -15,8 +15,18 @@ const getRequests = (endpoint) => {
   return axios.get(`${baseURL}/${endpoint}`)
 }
 
+const deleteBasket = (endpoint) => {
+  return axios.delete(`${baseURL}/${endpoint}`)
+}
+
+const deleteRequest = (requestId) => {
+  return axios.delete(`${baseURL}/requests/${requestId}`)
+}
+
 export default {
   generateEndpoint,
   create,
-  getRequests
+  getRequests,
+  deleteBasket,
+  deleteRequest
 }
